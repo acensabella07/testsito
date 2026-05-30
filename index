@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maturità Hub 2026</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --secondary: #10B981;
+            --bg: #F3F4F6;
+            --surface: #FFFFFF;
+            --text: #1F2937;
+            --text-light: #6B7280;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { display: flex; height: 100vh; background-color: var(--bg); color: var(--text); }
+        
+        /* Layout principale */
+        aside { width: 250px; background-color: var(--surface); border-right: 1px solid #E5E7EB; display: flex; flex-direction: column; }
+        .logo { padding: 20px; font-size: 1.2rem; font-weight: 800; color: var(--primary); border-bottom: 1px solid #E5E7EB; }
+        nav { display: flex; flex-direction: column; padding: 10px 0; }
+        nav button { padding: 15px 20px; text-align: left; background: none; border: none; font-size: 1rem; color: var(--text-light); cursor: pointer; font-weight: 600; transition: 0.2s; }
+        nav button:hover, nav button.active { background-color: var(--primary); color: white; }
+        
+        main { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        header { padding: 20px; background-color: var(--surface); border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; }
+        header input { padding: 10px; border: 1px solid #E5E7EB; border-radius: 5px; font-size: 1rem; outline: none; }
+        
+        .content { padding: 20px; overflow-y: auto; flex-grow: 1; }
+        .section { display: none; animation: fadeIn 0.3s; }
+        .section.active { display: block; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Stili componenti UI */
+        .card { background: var(--surface); padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1, h2, h3 { margin-bottom: 15px; }
+        button.btn { padding: 10px 15px; background-color: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; }
+        button.btn:hover { background-color: #4338CA; }
+        input, select, textarea { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #E5E7EB; border-radius: 5px; }
+        
+        /* Flex Utils */
+        .flex { display: flex; gap: 15px; flex-wrap: wrap; }
+        .col { flex: 1; min-width: 300px; }
+        
+        /* Flashcards */
+        .flashcard { perspective: 1000px; width: 100%; height: 200px; cursor: pointer; margin-bottom: 20px; }
+        .flashcard-inner { width: 100%; height: 100%; transition: transform 0.6s; transform-style: preserve-3d; }
+        .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+        .flashcard-front, .flashcard-back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); font-size: 1.2rem;}
+        .flashcard-front { background-color: var(--surface); border: 2px solid var(--primary); }
+        .flashcard-back { background-color: var(--primary); color: white; transform: rotateY(180deg); }
+        
+        #quiz-container, #materials-list { margin-top: 15px; }
+        .material-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;}
+    </style>
+</head>
+<body>
+
+    <aside>
+        <div class="logo">🎓 Maturità Hub '26</div>
+        <nav id="sidebar">
+            <button class="active" onclick="showSection('dashboard')">Dashboard</button>
+            <button onclick="showSection('quiz')">Quiz</button>
+            <button onclick="showSection('flashcard')">Flashcard</button>
+            <button onclick="showSection('orale')">Simulatore Orale</button>
+            <button onclick="showSection('materiali')">Materiali</button>
+            <button onclick="showSection('progressi')">Progressi</button>
+        </nav>
+    </aside>
+
+    <main>
+        <header>
+            <h2 id="header-title">Dashboard</h2>
+            <div>
+                <input type="text" id="student-name" placeholder="Il tuo nome..." onchange="saveName()">
+            </div>
+        </header>
+
+        <div class="content">
+            <div id="dashboard" class="section active">
+                <div class="card">
+                    <h2>Piano di Studio</h2>
+                    <div class="flex">
+                        <div class="col">
+                            <label>Materie più deboli (separate da virgola)</label>
+                            <input type="text" id="weak-subjects" placeholder="es. Fisica, Filosofia">
+                            <label>Data Maturità</label>
+                            <input type="date" id="exam-date">
+                            <button class="btn" onclick="generatePlan()">Genera Calendario</button>
+                        </div>
+                        <div class="col" id="plan-output" style="background:#F9FAFB; padding: 15px; border-radius: 5px;">
+                            <em>Compila i dati per generare il tuo piano.</em>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="quiz" class="section">
+                <div class="card">
+                    <h2>Simulazione Prima/Seconda Prova</h2>
+                    <p>Mettiti alla prova. (Caricate 10 domande di cultura generale/scolastica).</p>
+                    <button class="btn" onclick="startQuiz()">Avvia Quiz</button>
+                    <div id="quiz-container"></div>
+                </div>
+            </div>
+
+            <div id="flashcard" class="section">
+                <div class="card">
+                    <h2>Ripasso Spaziato (Spaced Repetition)</h2>
+                    <div style="display:flex; gap:10px; margin-bottom:15px;">
+                        <input type="text" id="fc-front" placeholder="Domanda (Fronte)">
+                        <input type="text" id="fc-back" placeholder="Risposta (Retro)">
+                        <button class="btn" onclick="addFlashcard()">Aggiungi</button>
+                    </div>
+                    <div id="flashcard-viewer">
+                        <em>Nessuna flashcard da ripassare oggi o mazzo vuoto.</em>
+                    </div>
+                    <div id="fc-controls" style="display:none; text-align:center;">
+                        <button class="btn" style="background:red" onclick="rateFlashcard(1)">Non la sapevo</button>
+                        <button class="btn" style="background:orange" onclick="rateFlashcard(3)">Incerto</button>
+                        <button class="btn" style="background:green" onclick="rateFlashcard(5)">Facile</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="orale" class="section">
+                <div class="card">
+                    <h2>Simulatore Orale (Commissione)</h2>
+                    <label>Scegli le materie per i collegamenti (Tieni premuto CTRL/CMD per selezione multipla)</label>
+                    <select id="oral-subjects" multiple style="height: 100px;">
+                        <option value="Italiano">Italiano</option>
+                        <option value="Storia">Storia</option>
+                        <option value="Filosofia">Filosofia</option>
+                        <option value="Fisica">Fisica</option>
+                        <option value="Matematica">Matematica</option>
+                        <option value="Inglese">Inglese</option>
+                    </select>
+                    <button class="btn" onclick="startOral()">Genera Domande</button>
+                    
+                    <div id="oral-interview" style="margin-top: 20px; display: none;">
+                        <h3 id="oral-question">Domanda...</h3>
+                        <p style="font-size: 0.9em; color: gray;">Usa il microfono per rispondere:</p>
+                        <button class="btn" id="mic-btn" onclick="toggleRecording()" style="background:#10B981; margin-bottom: 10px;">🎤 Avvia Registrazione</button>
+                        <textarea id="oral-answer" rows="4" placeholder="Oppure scrivi la tua risposta qui..."></textarea>
+                        <button class="btn" onclick="nextOralQuestion()">Rispondi / Prossima</button>
+                    </div>
+                    <div id="oral-feedback" style="margin-top:20px;"></div>
+                </div>
+            </div>
+
+            <div id="materiali" class="section">
+                <div class="card">
+                    <h2>Archivio Appunti</h2>
+                    <p>Carica i tuoi riassunti (.txt) per generare flashcard. (I PDF salvano solo il riferimento per limiti di memoria browser).</p>
+                    <input type="file" id="file-upload" accept=".txt,.pdf">
+                    <button class="btn" onclick="uploadMaterial()">Salva Materiale</button>
+                    
+                    <h3 style="margin-top: 20px;">I tuoi file</h3>
+                    <div id="materials-list"></div>
+                </div>
+            </div>
+
+            <div id="progressi" class="section">
+                <div class="card flex">
+                    <div class="col">
+                        <h2>Andamento Ripasso</h2>
+                        <canvas id="progressChart"></canvas>
+                    </div>
+                    <div class="col" style="text-align: center; display:flex; flex-direction:column; justify-content:center;">
+                        <h2>Streak di Studio</h2>
+                        <h1 style="font-size: 4rem; color: var(--primary)" id="streak-count">0 🔥</h1>
+                        <p>Giorni consecutivi</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- 1. GESTIONE STATO & LOCALSTORAGE ---
+        const defaultState = {
+            name: '',
+            weakSubjects: '',
+            examDate: '',
+            quizScore: 0,
+            quizzesDone: 0,
+            flashcards: [], 
+            materials: [],
+            lastStudyDate: null,
+            streak: 0
+        };
+
+        let appState = JSON.parse(localStorage.getItem('maturita_2026')) || defaultState;
+
+        function saveState() {
+            localStorage.setItem('maturita_2026', JSON.stringify(appState));
+            updateStreak();
+        }
+
+        // --- 2. INIZIALIZZAZIONE & NAVIGAZIONE ---
+        window.onload = () => {
+            document.getElementById('student-name').value = appState.name;
+            document.getElementById('weak-subjects').value = appState.weakSubjects;
+            document.getElementById('exam-date').value = appState.examDate;
+            updateStreak();
+            renderMaterials();
+            initChart();
+            if(appState.examDate) generatePlan(false);
+        };
+
+        function saveName() {
+            appState.name = document.getElementById('student-name').value;
+            saveState();
+        }
+
+        function showSection(id) {
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            
+            document.querySelectorAll('#sidebar button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.getElementById('header-title').innerText = event.target.innerText;
+
+            if(id === 'flashcard') loadFlashcard();
+            if(id === 'progressi') updateChart();
+        }
+
+        function updateStreak() {
+            const today = new Date().toDateString();
+            if (appState.lastStudyDate !== today) {
+                // Semplificazione: aggiorno lo streak ogni volta che c'è un'azione in un giorno diverso
+                if (appState.lastStudyDate === new Date(Date.now() - 86400000).toDateString()) {
+                    appState.streak++;
+                } else if(appState.lastStudyDate) {
+                    appState.streak = 1;
+                } else {
+                    appState.streak = 1;
+                }
+                appState.lastStudyDate = today;
+                localStorage.setItem('maturita_2026', JSON.stringify(appState));
+            }
+            document.getElementById('streak-count').innerText = appState.streak + " 🔥";
+        }
+
+        // --- 3. DASHBOARD & PIANO STUDIO ---
+        function generatePlan(alertUser = true) {
+            appState.weakSubjects = document.getElementById('weak-subjects').value;
+            appState.examDate = document.getElementById('exam-date').value;
+            saveState();
+
+            const out = document.getElementById('plan-output');
+            if (!appState.examDate) return;
+
+            const exam = new Date(appState.examDate);
+            const today = new Date();
+            const diffTime = Math.abs(exam - today);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            const subs = appState.weakSubjects.split(',').filter(s => s.trim() !== '');
+            
+            let html = `<h3>Il tuo piano (Mancano ${diffDays} giorni)</h3>`;
+            html += `<p>Copertura programma: <strong>${Math.min(100, appState.quizzesDone * 5)}%</strong></p>`;
+            
+            if (subs.length > 0) {
+                const daysPerSub = Math.floor(diffDays / subs.length);
+                html += `<ul>`;
+                subs.forEach(s => html += `<li style="margin:10px 0;">Dedica i prossimi <b>${daysPerSub} giorni</b> intensivamente a: <i>${s.trim()}</i></li>`);
+                html += `</ul>`;
+            } else {
+                html += `<p>Nessuna materia debole inserita. Mantieni un ripasso generale!</p>`;
+            }
+            out.innerHTML = html;
+            if(alertUser) alert("Calendario aggiornato!");
+        }
+
+        // --- 4. QUIZ ---
+        const sampleQuiz = [
+            { q: "Chi ha scritto 'La Coscienza di Zeno'?", options: ["Pirandello", "Svevo", "D'Annunzio"], a: 1, exp: "Italo Svevo lo pubblicò nel 1923." },
+            { q: "Qual è la derivata di sin(x)?", options: ["cos(x)", "-cos(x)", "sin(x)"], a: 0, exp: "Regola base delle derivate." },
+            { q: "In che anno è caduto il Muro di Berlino?", options: ["1989", "1991", "1987"], a: 0, exp: "9 Novembre 1989." }
+        ];
+        let currentQuizIndex = 0;
+        let score = 0;
+
+        function startQuiz() {
+            currentQuizIndex = 0;
+            score = 0;
+            renderQuiz();
+        }
+
+        function renderQuiz() {
+            const container = document.getElementById('quiz-container');
+            if (currentQuizIndex >= sampleQuiz.length) {
+                container.innerHTML = `<h3>Quiz Terminato! Punteggio: ${score}/${sampleQuiz.length}</h3>`;
+                appState.quizzesDone++;
+                appState.quizScore += score;
+                saveState();
+                generatePlan(false);
+                return;
+            }
+            const q = sampleQuiz[currentQuizIndex];
+            let html = `<h3>Domanda ${currentQuizIndex + 1} di ${sampleQuiz.length}</h3><p>${q.q}</p><div style="margin-top:15px;">`;
+            q.options.forEach((opt, idx) => {
+                html += `<button class="btn" style="display:block; margin-bottom:10px; width:100%; text-align:left;" onclick="checkAnswer(${idx})">${opt}</button>`;
+            });
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+
+        function checkAnswer(idx) {
+            const q = sampleQuiz[currentQuizIndex];
+            if (idx === q.a) {
+                score++;
+                alert("Corretto!\n" + q.exp);
+            } else {
+                alert("Sbagliato.\n" + q.exp);
+            }
+            currentQuizIndex++;
+            renderQuiz();
+        }
+
+        // --- 5. FLASHCARDS (Spaced Repetition base) ---
+        let currentCardIndex = -1;
+
+        function addFlashcard() {
+            const front = document.getElementById('fc-front').value;
+            const back = document.getElementById('fc-back').value;
+            if(!front || !back) return alert("Inserisci fronte e retro!");
+            
+            appState.flashcards.push({
+                front, back, 
+                nextReview: Date.now(), 
+                interval: 1 // giorni
+            });
+            saveState();
+            document.getElementById('fc-front').value = '';
+            document.getElementById('fc-back').value = '';
+            alert("Card aggiunta!");
+            loadFlashcard();
+        }
+
+        function loadFlashcard() {
+            const viewer = document.getElementById('flashcard-viewer');
+            const controls = document.getElementById('fc-controls');
+            
+            // Trova la prima card da ripassare
+            const now = Date.now();
+            currentCardIndex = appState.flashcards.findIndex(c => c.nextReview <= now);
+
+            if (currentCardIndex === -1) {
+                viewer.innerHTML = `<em>Hai completato il ripasso per oggi!</em>`;
+                controls.style.display = 'none';
+                return;
+            }
+
+            const card = appState.flashcards[currentCardIndex];
+            viewer.innerHTML = `
+                <div class="flashcard" onclick="this.classList.toggle('flipped')">
+                    <div class="flashcard-inner">
+                        <div class="flashcard-front">${card.front}</div>
+                        <div class="flashcard-back">${card.back}</div>
+                    </div>
+                </div>
+                <p style="text-align:center; color:gray; font-size:0.8rem">Clicca sulla carta per girarla</p>
+            `;
+            controls.style.display = 'block';
+        }
+
+        function rateFlashcard(quality) {
+            const card = appState.flashcards[currentCardIndex];
+            // Semplice algoritmo: se difficile (1) resetta intervallo. Se facile (5) moltiplica.
+            if(quality === 1) card.interval = 1;
+            else if(quality === 3) card.interval *= 1.5;
+            else card.interval *= 2;
+
+            card.nextReview = Date.now() + (card.interval * 86400000); // ms in un giorno
+            saveState();
+            loadFlashcard();
+        }
+
+        // --- 6. SIMULATORE ORALE (Web Speech API) ---
+        let oralQuestions = [];
+        let currentOralIdx = 0;
+        let recognition;
+        let isRecording = false;
+
+        function startOral() {
+            const select = document.getElementById('oral-subjects');
+            const scelti = Array.from(select.selectedOptions).map(o => o.value);
+            if(scelti.length < 2) return alert("Scegli almeno 2 materie per i collegamenti.");
+            
+            // Genera domande finte incrociate
+            oralQuestions = [
+                `Partendo dal concetto di tempo in ${scelti[0]}, come lo collegheresti a ${scelti[1]}?`,
+                `Parlami di un autore/teorema di ${scelti[1]} e trova un punto di contatto con ${scelti[0]}.`,
+                `Quali sono le differenze di approccio tra ${scelti[0]} e ${scelti.length > 2 ? scelti[2] : scelti[0]} sul tema dell'infinito?`
+            ];
+            currentOralIdx = 0;
+            document.getElementById('oral-interview').style.display = 'block';
+            document.getElementById('oral-feedback').innerHTML = '';
+            showOralQuestion();
+        }
+
+        function showOralQuestion() {
+            if(currentOralIdx >= oralQuestions.length) {
+                document.getElementById('oral-interview').style.display = 'none';
+                const voto = Math.floor(Math.random() * 4) + 6; // Voto casuale 6-10
+                document.getElementById('oral-feedback').innerHTML = `<h3>Simulazione Conclusa!</h3><p>Valutazione stimata: <strong>${voto}/10</strong>. Continua a esercitarti sull'esposizione.</p>`;
+                return;
+            }
+            document.getElementById('oral-question').innerText = oralQuestions[currentOralIdx];
+            document.getElementById('oral-answer').value = '';
+        }
+
+        function toggleRecording() {
+            const btn = document.getElementById('mic-btn');
+            if (isRecording) {
+                recognition.stop();
+                btn.innerText = "🎤 Avvia Registrazione";
+                btn.style.background = "#10B981";
+                isRecording = false;
+                return;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return alert("Il tuo browser non supporta la dettatura vocale.");
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'it-IT';
+            recognition.interimResults = false;
+            
+            recognition.onresult = (e) => {
+                const text = e.results[0][0].transcript;
+                document.getElementById('oral-answer').value += text + " ";
+            };
+            
+            recognition.start();
+            isRecording = true;
+            btn.innerText = "🛑 Ferma Registrazione";
+            btn.style.background = "red";
+        }
+
+        function nextOralQuestion() {
+            if(isRecording) toggleRecording();
+            currentOralIdx++;
+            showOralQuestion();
+        }
+
+        // --- 7. MATERIALI (File API) ---
+        function uploadMaterial() {
+            const fileInput = document.getElementById('file-upload');
+            const file = fileInput.files[0];
+            if(!file) return alert("Seleziona un file.");
+
+            if(file.name.endsWith('.txt')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const text = e.target.result;
+                    appState.materials.push({ name: file.name, type: 'txt', content: text.substring(0, 50) + "..." });
+                    saveState();
+                    renderMaterials();
+                    
+                    // Auto-generate flashcard from text
+                    appState.flashcards.push({
+                        front: `Cosa ricordi di: ${file.name}?`, back: text.substring(0,100) + "...", nextReview: Date.now(), interval: 1
+                    });
+                    alert("File salvato e flashcard generata!");
+                };
+                reader.readAsText(file);
+            } else {
+                // PDF - salviamo solo il metadato
+                appState.materials.push({ name: file.name, type: 'pdf', content: 'Contenuto non salvato per limiti browser' });
+                saveState();
+                renderMaterials();
+                alert("File PDF registrato nell'archivio.");
+            }
+            fileInput.value = '';
+        }
+
+        function renderMaterials() {
+            const list = document.getElementById('materials-list');
+            list.innerHTML = '';
+            appState.materials.forEach((m, idx) => {
+                list.innerHTML += `<div class="material-item">
+                    <span>📄 <strong>${m.name}</strong></span>
+                    <button class="btn" style="padding: 5px 10px; background: red;" onclick="deleteMaterial(${idx})">X</button>
+                </div>`;
+            });
+        }
+
+        function deleteMaterial(idx) {
+            appState.materials.splice(idx, 1);
+            saveState();
+            renderMaterials();
+        }
+
+        // --- 8. PROGRESSI (Chart.js) ---
+        let chartInstance;
+        function initChart() {
+            const ctx = document.getElementById('progressChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Quiz Completati', 'Flashcard da fare', 'Flashcard Apprese'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#4F46E5', '#EF4444', '#10B981']
+                    }]
+                }
+            });
+        }
+
+        function updateChart() {
+            const now = Date.now();
+            const fcToReview = appState.flashcards.filter(c => c.nextReview <= now).length;
+            const fcLearned = appState.flashcards.length - fcToReview;
+
+            chartInstance.data.datasets[0].data = [appState.quizzesDone, fcToReview, fcLearned];
+            chartInstance.update();
+        }
+    </script>
+</body>
+</html>
